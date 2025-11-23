@@ -1,65 +1,66 @@
-import Image from "next/image";
+import { Button } from "@/components/ui/Button";
+import Link from "next/link";
 
 export default function Home() {
   return (
-    <div className="flex min-h-screen items-center justify-center bg-zinc-50 font-sans dark:bg-black">
-      <main className="flex min-h-screen w-full max-w-3xl flex-col items-center justify-between py-32 px-16 bg-white dark:bg-black sm:items-start">
-        <Image
-          className="dark:invert"
-          src="/next.svg"
-          alt="Next.js logo"
-          width={100}
-          height={20}
-          priority
-        />
-        <div className="flex flex-col items-center gap-6 text-center sm:items-start sm:text-left">
-          <h1 className="max-w-xs text-3xl font-semibold leading-10 tracking-tight text-black dark:text-zinc-50">
-            To get started, edit the page.tsx file.
+    <div className="flex flex-col">
+      {/* Hero Section */}
+      <section className="relative py-20 md:py-32 bg-gradient-to-b from-primary/5 to-background overflow-hidden">
+        <div className="container-custom relative z-10 text-center">
+          <h1 className="text-4xl md:text-6xl font-extrabold tracking-tight text-foreground mb-6">
+            Find the Perfect <span className="text-primary">Professional</span><br />
+            for Your Needs
           </h1>
-          <p className="max-w-md text-lg leading-8 text-zinc-600 dark:text-zinc-400">
-            Looking for a starting point or more instructions? Head over to{" "}
-            <a
-              href="https://vercel.com/templates?framework=next.js&utm_source=create-next-app&utm_medium=appdir-template-tw&utm_campaign=create-next-app"
-              className="font-medium text-zinc-950 dark:text-zinc-50"
-            >
-              Templates
-            </a>{" "}
-            or the{" "}
-            <a
-              href="https://nextjs.org/learn?utm_source=create-next-app&utm_medium=appdir-template-tw&utm_campaign=create-next-app"
-              className="font-medium text-zinc-950 dark:text-zinc-50"
-            >
-              Learning
-            </a>{" "}
-            center.
+          <p className="text-lg md:text-xl text-muted-foreground max-w-2xl mx-auto mb-10">
+            From home repairs to personal training, connect with trusted experts in your area.
+            Book services instantly with confidence.
           </p>
+          <div className="flex flex-col sm:flex-row items-center justify-center gap-4">
+            <Link href="/services">
+              <Button size="lg" className="w-full sm:w-auto text-base px-8">
+                Find a Service
+              </Button>
+            </Link>
+            <Link href="/become-a-provider">
+              <Button variant="outline" size="lg" className="w-full sm:w-auto text-base px-8">
+                Become a Provider
+              </Button>
+            </Link>
+          </div>
         </div>
-        <div className="flex flex-col gap-4 text-base font-medium sm:flex-row">
-          <a
-            className="flex h-12 w-full items-center justify-center gap-2 rounded-full bg-foreground px-5 text-background transition-colors hover:bg-[#383838] dark:hover:bg-[#ccc] md:w-[158px]"
-            href="https://vercel.com/new?utm_source=create-next-app&utm_medium=appdir-template-tw&utm_campaign=create-next-app"
-            target="_blank"
-            rel="noopener noreferrer"
-          >
-            <Image
-              className="dark:invert"
-              src="/vercel.svg"
-              alt="Vercel logomark"
-              width={16}
-              height={16}
-            />
-            Deploy Now
-          </a>
-          <a
-            className="flex h-12 w-full items-center justify-center rounded-full border border-solid border-black/[.08] px-5 transition-colors hover:border-transparent hover:bg-black/[.04] dark:border-white/[.145] dark:hover:bg-[#1a1a1a] md:w-[158px]"
-            href="https://nextjs.org/docs?utm_source=create-next-app&utm_medium=appdir-template-tw&utm_campaign=create-next-app"
-            target="_blank"
-            rel="noopener noreferrer"
-          >
-            Documentation
-          </a>
+
+        {/* Decorative elements */}
+        <div className="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 w-[800px] h-[800px] bg-primary/5 rounded-full blur-3xl -z-10" />
+      </section>
+
+      {/* Features Section */}
+      <section className="py-20 bg-background">
+        <div className="container-custom">
+          <div className="grid grid-cols-1 md:grid-cols-3 gap-8">
+            <div className="p-6 rounded-2xl bg-muted/30 border border-border/50">
+              <div className="w-12 h-12 bg-primary/10 rounded-xl flex items-center justify-center mb-4 text-primary">
+                <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><circle cx="11" cy="11" r="8" /><path d="m21 21-4.3-4.3" /></svg>
+              </div>
+              <h3 className="text-xl font-bold mb-2">Easy Search</h3>
+              <p className="text-muted-foreground">Find exactly what you need with our advanced search and filtering system.</p>
+            </div>
+            <div className="p-6 rounded-2xl bg-muted/30 border border-border/50">
+              <div className="w-12 h-12 bg-primary/10 rounded-xl flex items-center justify-center mb-4 text-primary">
+                <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><rect width="18" height="18" x="3" y="4" rx="2" ry="2" /><line x1="16" y1="2" x2="16" y2="6" /><line x1="8" y1="2" x2="8" y2="6" /><line x1="3" y1="10" x2="21" y2="10" /></svg>
+              </div>
+              <h3 className="text-xl font-bold mb-2">Instant Booking</h3>
+              <p className="text-muted-foreground">Book appointments directly through the platform with real-time availability.</p>
+            </div>
+            <div className="p-6 rounded-2xl bg-muted/30 border border-border/50">
+              <div className="w-12 h-12 bg-primary/10 rounded-xl flex items-center justify-center mb-4 text-primary">
+                <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10" /><path d="m9 12 2 2 4-4" /></svg>
+              </div>
+              <h3 className="text-xl font-bold mb-2">Secure Payments</h3>
+              <p className="text-muted-foreground">Pay safely and securely for services with our integrated payment system.</p>
+            </div>
+          </div>
         </div>
-      </main>
+      </section>
     </div>
   );
 }
