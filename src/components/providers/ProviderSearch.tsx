@@ -9,28 +9,40 @@ export function ProviderSearch() {
     const searchParams = useSearchParams()
     const [search, setSearch] = useState(searchParams.get("search") || "")
     const [category, setCategory] = useState(searchParams.get("category") || "all")
+    const [location, setLocation] = useState(searchParams.get("location") || "")
 
     const handleSearch = () => {
         const params = new URLSearchParams()
         if (search) params.set("search", search)
         if (category && category !== "all") params.set("category", category)
+        if (location) params.set("location", location)
         router.push(`/services?${params.toString()}`)
     }
 
     const handleReset = () => {
         setSearch("")
         setCategory("all")
+        setLocation("")
         router.push("/services")
     }
 
     return (
         <div className="bg-muted/30 p-6 rounded-lg space-y-4">
-            <div className="grid gap-4 md:grid-cols-[1fr_200px_auto]">
+            <div className="grid gap-4 md:grid-cols-[1fr_200px_200px_auto]">
                 <input
                     type="text"
                     value={search}
                     onChange={(e) => setSearch(e.target.value)}
                     placeholder="Search by name or keywords..."
+                    className="rounded-md border border-input bg-background px-3 py-2 text-sm"
+                    onKeyDown={(e) => e.key === "Enter" && handleSearch()}
+                />
+
+                <input
+                    type="text"
+                    value={location}
+                    onChange={(e) => setLocation(e.target.value)}
+                    placeholder="Location..."
                     className="rounded-md border border-input bg-background px-3 py-2 text-sm"
                     onKeyDown={(e) => e.key === "Enter" && handleSearch()}
                 />

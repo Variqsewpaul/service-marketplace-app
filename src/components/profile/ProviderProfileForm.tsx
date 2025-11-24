@@ -15,6 +15,12 @@ export function ProviderProfileForm({ initialData }: { initialData: any }) {
     // Profile picture state
     const [profilePicPreview, setProfilePicPreview] = useState<string>(initialData?.profilePicture || "")
 
+    // Provider type state
+    const [providerType, setProviderType] = useState<string>(initialData?.providerType || "INDIVIDUAL")
+
+    // Business logo state
+    const [businessLogoPreview, setBusinessLogoPreview] = useState<string>(initialData?.businessLogo || "")
+
     const handleDragOver = useCallback((e: React.DragEvent) => {
         e.preventDefault()
         setIsDragging(true)
@@ -61,13 +67,200 @@ export function ProviderProfileForm({ initialData }: { initialData: any }) {
         }
     }, [])
 
+    const handleBusinessLogoChange = useCallback((e: React.ChangeEvent<HTMLInputElement>) => {
+        const file = e.target.files?.[0]
+        if (file && file.type.startsWith("image/")) {
+            const reader = new FileReader()
+            reader.onload = (event) => {
+                setBusinessLogoPreview(event.target?.result as string)
+            }
+            reader.readAsDataURL(file)
+        }
+    }, [])
+
     return (
         <div className="space-y-8 max-w-xl">
             <form action={dispatch} className="space-y-6">
-                {/* Profile Picture */}
+                {/* Provider Type Selection */}
+                <div className="space-y-3">
+                    <label className="block text-sm font-medium text-foreground">
+                        I am registering as:
+                    </label>
+                    <div className="flex gap-4">
+                        <label className="flex items-center gap-2 cursor-pointer border rounded-md p-3 flex-1 hover:bg-muted/50 transition-colors has-[:checked]:border-primary has-[:checked]:bg-primary/5">
+                            <input
+                                type="radio"
+                                name="providerType"
+                                value="INDIVIDUAL"
+                                defaultChecked={!initialData?.providerType || initialData?.providerType === "INDIVIDUAL"}
+                                onChange={() => setProviderType("INDIVIDUAL")}
+                                className="w-4 h-4 text-primary"
+                            />
+                            <div>
+                                <span className="font-medium block">Individual</span>
+                                <span className="text-xs text-muted-foreground">I offer services myself</span>
+                            </div>
+                        </label>
+                        <label className="flex items-center gap-2 cursor-pointer border rounded-md p-3 flex-1 hover:bg-muted/50 transition-colors has-[:checked]:border-primary has-[:checked]:bg-primary/5">
+                            <input
+                                type="radio"
+                                name="providerType"
+                                value="BUSINESS"
+                                defaultChecked={initialData?.providerType === "BUSINESS"}
+                                onChange={() => setProviderType("BUSINESS")}
+                                className="w-4 h-4 text-primary"
+                            />
+                            <div>
+                                <span className="font-medium block">Business</span>
+                                <span className="text-xs text-muted-foreground">I represent a company</span>
+                            </div>
+                        </label>
+                    </div>
+                </div>
+
+                {/* Business Fields - Only shown if providerType is BUSINESS */}
+                {providerType === "BUSINESS" && (
+                    <div className="space-y-6 border-l-2 border-primary/20 pl-4 ml-1 animate-in fade-in slide-in-from-top-2">
+                        <h3 className="font-semibold text-lg">Business Details</h3>
+
+                        {/* Business Logo */}
+                        <div>
+                            <label className="block text-sm font-medium text-foreground mb-2">
+                                Business Logo
+                            </label>
+                            <div
+                                className="border-2 border-dashed rounded-md p-4 text-center cursor-pointer transition-colors hover:border-primary/50"
+                                onClick={() => document.getElementById("business-logo-upload")?.click()}
+                            >
+                                <input
+                                    type="file"
+                                    id="business-logo-upload"
+                                    className="hidden"
+                                    accept="image/*"
+                                    onChange={handleBusinessLogoChange}
+                                />
+                                <input type="hidden" name="businessLogo" value={businessLogoPreview} />
+
+                                {businessLogoPreview ? (
+                                    <div className="flex flex-col items-center gap-2">
+                                        <div className="w-32 h-32 rounded-md overflow-hidden bg-muted object-contain">
+                                            <img src={businessLogoPreview} alt="Business Logo" className="w-full h-full object-contain" />
+                                        </div>
+                                        <p className="text-xs text-muted-foreground">Click to change</p>
+                                    </div>
+                                ) : (
+                                    <div className="space-y-2">
+                                        <div className="text-4xl">🏢</div>
+                                        <p className="text-sm font-medium">Add Business Logo</p>
+                                        <p className="text-xs text-muted-foreground">Click to select</p>
+                                    </div>
+                                )}
+                            </div>
+                        </div>
+
+                        <div>
+                            <label htmlFor="businessName" className="block text-sm font-medium text-foreground">
+                                Business Name <span className="text-destructive">*</span>
+                            </label>
+                            <input
+                                type="text"
+                                id="businessName"
+                                name="businessName"
+                                required={providerType === "BUSINESS"}
+                                defaultValue={initialData?.businessName || ""}
+                                className="mt-1 block w-full rounded-md border border-input bg-background px-3 py-2 text-sm ring-offset-background placeholder:text-muted-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2"
+                            />
+                        </div>
+
+                        <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                            <div>
+                                <label htmlFor="businessRegNumber" className="block text-sm font-medium text-foreground">
+                                    Registration Number
+                                </label>
+                                <input
+                                    type="text"
+                                    id="businessRegNumber"
+                                    name="businessRegNumber"
+                                    defaultValue={initialData?.businessRegNumber || ""}
+                                    className="mt-1 block w-full rounded-md border border-input bg-background px-3 py-2 text-sm ring-offset-background placeholder:text-muted-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2"
+                                />
+                            </div>
+                            <div>
+                                <label htmlFor="taxNumber" className="block text-sm font-medium text-foreground">
+                                    Tax/VAT Number
+                                </label>
+                                <input
+                                    type="text"
+                                    id="taxNumber"
+                                    name="taxNumber"
+                                    defaultValue={initialData?.taxNumber || ""}
+                                    className="mt-1 block w-full rounded-md border border-input bg-background px-3 py-2 text-sm ring-offset-background placeholder:text-muted-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2"
+                                />
+                            </div>
+                        </div>
+
+                        <div>
+                            <label htmlFor="businessAddress" className="block text-sm font-medium text-foreground">
+                                Business Address
+                            </label>
+                            <input
+                                type="text"
+                                id="businessAddress"
+                                name="businessAddress"
+                                defaultValue={initialData?.businessAddress || ""}
+                                className="mt-1 block w-full rounded-md border border-input bg-background px-3 py-2 text-sm ring-offset-background placeholder:text-muted-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2"
+                            />
+                        </div>
+
+                        <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                            <div>
+                                <label htmlFor="numberOfEmployees" className="block text-sm font-medium text-foreground">
+                                    Number of Employees
+                                </label>
+                                <input
+                                    type="number"
+                                    id="numberOfEmployees"
+                                    name="numberOfEmployees"
+                                    min="1"
+                                    defaultValue={initialData?.numberOfEmployees || ""}
+                                    className="mt-1 block w-full rounded-md border border-input bg-background px-3 py-2 text-sm ring-offset-background placeholder:text-muted-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2"
+                                />
+                            </div>
+                            <div>
+                                <label htmlFor="yearsInBusiness" className="block text-sm font-medium text-foreground">
+                                    Years in Business
+                                </label>
+                                <input
+                                    type="number"
+                                    id="yearsInBusiness"
+                                    name="yearsInBusiness"
+                                    min="0"
+                                    defaultValue={initialData?.yearsInBusiness || ""}
+                                    className="mt-1 block w-full rounded-md border border-input bg-background px-3 py-2 text-sm ring-offset-background placeholder:text-muted-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2"
+                                />
+                            </div>
+                        </div>
+
+                        <div>
+                            <label htmlFor="businessDescription" className="block text-sm font-medium text-foreground">
+                                Business Description
+                            </label>
+                            <textarea
+                                id="businessDescription"
+                                name="businessDescription"
+                                rows={3}
+                                defaultValue={initialData?.businessDescription || ""}
+                                className="mt-1 block w-full rounded-md border border-input bg-background px-3 py-2 text-sm ring-offset-background placeholder:text-muted-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2"
+                                placeholder="Describe your company..."
+                            />
+                        </div>
+                    </div>
+                )}
+
+                {/* Profile Picture - Show different label for business */}
                 <div>
                     <label className="block text-sm font-medium text-foreground mb-2">
-                        Profile Picture
+                        {providerType === "BUSINESS" ? "Representative Profile Picture" : "Profile Picture"}
                     </label>
                     <div
                         className="border-2 border-dashed rounded-md p-4 text-center cursor-pointer transition-colors hover:border-primary/50"
@@ -101,7 +294,7 @@ export function ProviderProfileForm({ initialData }: { initialData: any }) {
 
                 <div>
                     <label htmlFor="bio" className="block text-sm font-medium text-foreground">
-                        Bio
+                        {providerType === "BUSINESS" ? "Representative Bio" : "Bio"}
                     </label>
                     <textarea
                         id="bio"
@@ -109,7 +302,7 @@ export function ProviderProfileForm({ initialData }: { initialData: any }) {
                         rows={4}
                         defaultValue={initialData?.bio || ""}
                         className="mt-1 block w-full rounded-md border border-input bg-background px-3 py-2 text-sm ring-offset-background placeholder:text-muted-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2"
-                        placeholder="Tell us about yourself and your services..."
+                        placeholder={providerType === "BUSINESS" ? "Tell us about yourself as the representative..." : "Tell us about yourself and your services..."}
                     />
                 </div>
 

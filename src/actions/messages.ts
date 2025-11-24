@@ -10,6 +10,8 @@ export async function sendMessage(prevState: any, formData: FormData) {
 
     const receiverId = formData.get("receiverId") as string
     const content = formData.get("content") as string
+    const messageType = formData.get("messageType") as string || "TEXT"
+    const attachments = formData.get("attachments") as string || null
 
     if (!receiverId || !content) {
         return { error: "Missing required fields" }
@@ -20,10 +22,13 @@ export async function sendMessage(prevState: any, formData: FormData) {
             senderId: session.user.id,
             receiverId,
             content,
+            messageType,
+            attachments,
         },
     })
 
     revalidatePath("/profile")
+    revalidatePath("/dashboard")
     return { success: true }
 }
 
@@ -49,7 +54,7 @@ export async function getConversations() {
     // Group by conversation partner
     const conversationsMap = new Map()
 
-    messages.forEach((message) => {
+    messages.forEach((message: any) => {
         const partnerId = message.senderId === session.user.id ? message.receiverId : message.senderId
         const partner = message.senderId === session.user.id ? message.receiver : message.sender
 

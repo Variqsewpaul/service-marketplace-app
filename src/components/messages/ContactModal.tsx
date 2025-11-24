@@ -19,6 +19,7 @@ export function ContactModal({
     const [message, setMessage] = useState("")
 
     const handleSubmit = async (formData: FormData) => {
+        formData.set("messageType", "TEXT")
         await dispatch(formData)
         if (!state?.error) {
             setMessage("")

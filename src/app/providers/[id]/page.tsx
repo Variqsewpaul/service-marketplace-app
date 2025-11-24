@@ -14,7 +14,7 @@ export default async function ProviderPublicPage({ params }: { params: Promise<{
             providerProfile: {
                 include: {
                     portfolioItems: {
-                        orderBy: { createdAt: "desc" }
+                        orderBy: { createdAt: "desc" as const }
                     }
                 }
             }
@@ -26,7 +26,13 @@ export default async function ProviderPublicPage({ params }: { params: Promise<{
     }
 
     const profile = provider.providerProfile
-    const skills = profile.skills?.split(",").map(s => s.trim()).filter(Boolean) || []
+    const skills = profile.skills?.split(",").map((s: string) => s.trim()).filter(Boolean) || []
+
+    // Determine display name and image
+    const isBusiness = (profile as any).providerType === "BUSINESS"
+    const displayName = isBusiness ? (profile as any).businessName || provider.name : provider.name
+    const displayImage = isBusiness ? ((profile as any).businessLogo || profile.profilePicture) : profile.profilePicture
+    const displayBio = isBusiness ? ((profile as any).businessDescription || profile.bio) : profile.bio
 
     return (
         <div className="min-h-screen bg-background">
@@ -35,17 +41,25 @@ export default async function ProviderPublicPage({ params }: { params: Promise<{
                 <div className="container-custom py-16">
                     <div className="flex flex-col md:flex-row gap-6 items-start">
                         {/* Avatar */}
-                        <div className="w-32 h-32 rounded-full bg-primary/20 flex items-center justify-center text-4xl font-bold text-primary border-4 border-background shadow-lg overflow-hidden">
-                            {profile.profilePicture ? (
-                                <img src={profile.profilePicture} alt={provider.name || "Provider"} className="w-full h-full object-cover" />
+                        <div className="w-32 h-32 rounded-lg bg-primary/20 flex items-center justify-center text-4xl font-bold text-primary border-4 border-background shadow-lg overflow-hidden">
+                            {displayImage ? (
+                                <img src={displayImage} alt={displayName || "Provider"} className="w-full h-full object-contain bg-white" />
                             ) : (
-                                provider.name?.charAt(0).toUpperCase() || "P"
+                                displayName?.charAt(0).toUpperCase() || "P"
                             )}
                         </div>
 
                         {/* Info */}
                         <div className="flex-1">
-                            <h1 className="text-4xl font-bold tracking-tight mb-2">{provider.name}</h1>
+                            <div className="flex items-center gap-3 mb-2">
+                                <h1 className="text-4xl font-bold tracking-tight">{displayName}</h1>
+                                {isBusiness && (
+                                    <span className="px-2 py-1 rounded-md bg-blue-100 text-blue-700 text-xs font-bold border border-blue-200">
+                                        BUSINESS
+                                    </span>
+                                )}
+                            </div>
+
                             <div className="flex flex-wrap gap-3 mb-4">
                                 {profile.category && (
                                     <span className="inline-flex items-center px-3 py-1 rounded-full text-sm font-medium bg-primary/10 text-primary border border-primary/20">
@@ -57,9 +71,14 @@ export default async function ProviderPublicPage({ params }: { params: Promise<{
                                         📍 {profile.location}
                                     </span>
                                 )}
+                                {isBusiness && (profile as any).yearsInBusiness && (
+                                    <span className="inline-flex items-center gap-1 text-sm text-muted-foreground">
+                                        📅 {(profile as any).yearsInBusiness} Years in Business
+                                    </span>
+                                )}
                             </div>
-                            {profile.bio && (
-                                <p className="text-lg text-muted-foreground max-w-2xl">{profile.bio}</p>
+                            {displayBio && (
+                                <p className="text-lg text-muted-foreground max-w-2xl">{displayBio}</p>
                             )}
                         </div>
 
@@ -71,7 +90,7 @@ export default async function ProviderPublicPage({ params }: { params: Promise<{
                                     <div className="text-sm text-muted-foreground">per hour</div>
                                 </div>
                             )}
-                            <ContactButton providerId={provider.id} providerName={provider.name || "Provider"} />
+                            <ContactButton providerId={provider.id} providerName={displayName || "Provider"} />
                         </div>
                     </div>
                 </div>
@@ -82,12 +101,45 @@ export default async function ProviderPublicPage({ params }: { params: Promise<{
                 <div className="grid gap-8 lg:grid-cols-[1fr_350px]">
                     {/* Left Column - Portfolio & Skills */}
                     <div className="space-y-8">
+                        {/* Business Details Section */}
+                        {isBusiness && (
+                            <div className="rounded-lg border bg-card p-6">
+                                <h2 className="text-xl font-bold mb-4">Business Details</h2>
+                                <div className="grid sm:grid-cols-2 gap-4">
+                                    {(profile as any).businessAddress && (
+                                        <div>
+                                            <div className="text-sm font-medium text-muted-foreground">Address</div>
+                                            <div>{(profile as any).businessAddress}</div>
+                                        </div>
+                                    )}
+                                    {(profile as any).numberOfEmployees && (
+                                        <div>
+                                            <div className="text-sm font-medium text-muted-foreground">Team Size</div>
+                                            <div>{(profile as any).numberOfEmployees} Employees</div>
+                                        </div>
+                                    )}
+                                    {(profile as any).businessRegNumber && (
+                                        <div>
+                                            <div className="text-sm font-medium text-muted-foreground">Registration Number</div>
+                                            <div className="font-mono text-sm">{(profile as any).businessRegNumber}</div>
+                                        </div>
+                                    )}
+                                    {(profile as any).taxNumber && (
+                                        <div>
+                                            <div className="text-sm font-medium text-muted-foreground">Tax/VAT Number</div>
+                                            <div className="font-mono text-sm">{(profile as any).taxNumber}</div>
+                                        </div>
+                                    )}
+                                </div>
+                            </div>
+                        )}
+
                         {/* Skills */}
                         {skills.length > 0 && (
                             <div>
                                 <h2 className="text-2xl font-bold mb-4">Skills & Expertise</h2>
                                 <div className="flex flex-wrap gap-2">
-                                    {skills.map((skill, idx) => (
+                                    {skills.map((skill: string, idx: number) => (
                                         <span key={idx} className="px-3 py-1 rounded-md bg-muted text-sm font-medium">
                                             {skill}
                                         </span>
@@ -101,7 +153,7 @@ export default async function ProviderPublicPage({ params }: { params: Promise<{
                             <div>
                                 <h2 className="text-2xl font-bold mb-4">Portfolio</h2>
                                 <div className="grid gap-6 sm:grid-cols-2">
-                                    {profile.portfolioItems.map((item) => (
+                                    {profile.portfolioItems.map((item: any) => (
                                         <div key={item.id} className="rounded-lg border bg-card overflow-hidden hover:shadow-lg transition-shadow">
                                             {item.imageUrl && (
                                                 <div className="aspect-video bg-muted relative overflow-hidden">
@@ -124,7 +176,7 @@ export default async function ProviderPublicPage({ params }: { params: Promise<{
                             </div>
                         )}
 
-                        {(!profile.portfolioItems || profile.portfolioItems.length === 0) && skills.length === 0 && (
+                        {(!profile.portfolioItems || profile.portfolioItems.length === 0) && skills.length === 0 && !isBusiness && (
                             <div className="text-center py-12 text-muted-foreground">
                                 <p>This provider hasn't added any portfolio items yet.</p>
                             </div>

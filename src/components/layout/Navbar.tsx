@@ -24,8 +24,14 @@ export async function Navbar() {
                 <div className="flex items-center gap-4">
                     {session?.user ? (
                         <div className="flex items-center gap-4">
+                            <Link href="/dashboard" className="text-sm font-medium text-muted-foreground hover:text-foreground transition-colors">
+                                Dashboard
+                            </Link>
+                            <Link href="/profile" className="text-sm font-medium text-muted-foreground hover:text-foreground transition-colors">
+                                Profile
+                            </Link>
                             <span className="text-sm text-muted-foreground">
-                                Hello, {session.user.name || session.user.email}
+                                {session.user.name || session.user.email}
                             </span>
                             <form
                                 action={async () => {

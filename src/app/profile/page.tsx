@@ -143,7 +143,7 @@ export default async function ProfilePage({ searchParams }: { searchParams: Prom
                                         {conversations.map((conv: any) => (
                                             <Link
                                                 key={conv.partner.id}
-                                                href={`/profile?tab=messages&partnerId=${conv.partner.id}`}
+                                                href={`/dashboard/messages/${conv.partner.id}`}
                                                 className="block p-4 rounded-lg border hover:bg-muted/50 transition-colors"
                                             >
                                                 <div className="flex items-start justify-between">

@@ -80,6 +80,17 @@ model ProviderProfile {
   location      String?
   profilePicture String?
   
+  // Provider type and business information
+  providerType      String  @default("INDIVIDUAL") // INDIVIDUAL or BUSINESS
+  businessName      String?
+  businessRegNumber String?
+  businessAddress   String?
+  taxNumber         String?
+  numberOfEmployees Int?
+  yearsInBusiness   Int?
+  businessDescription String?
+  businessLogo      String?
+  
   portfolioItems PortfolioItem[]
 }
 
@@ -101,6 +112,8 @@ model Message {
   senderId   String
   receiverId String
   read       Boolean  @default(false)
+  messageType String  @default("TEXT") // TEXT, IMAGE, FILE
+  attachments String? // JSON array of file URLs/data
   createdAt  DateTime @default(now())
   
   sender   User @relation("SentMessages", fields: [senderId], references: [id], onDelete: Cascade)

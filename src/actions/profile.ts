@@ -47,6 +47,17 @@ export async function updateProviderProfile(prevState: any, formData: FormData) 
     const location = formData.get("location") as string
     const profilePicture = formData.get("profilePicture") as string
 
+    // Business fields
+    const providerType = formData.get("providerType") as string || "INDIVIDUAL"
+    const businessName = formData.get("businessName") as string
+    const businessRegNumber = formData.get("businessRegNumber") as string
+    const businessAddress = formData.get("businessAddress") as string
+    const taxNumber = formData.get("taxNumber") as string
+    const numberOfEmployees = formData.get("numberOfEmployees") ? parseInt(formData.get("numberOfEmployees") as string) : null
+    const yearsInBusiness = formData.get("yearsInBusiness") ? parseInt(formData.get("yearsInBusiness") as string) : null
+    const businessDescription = formData.get("businessDescription") as string
+    const businessLogo = formData.get("businessLogo") as string
+
     await db.providerProfile.update({
         where: { userId: session.user.id },
         data: {
@@ -58,6 +69,15 @@ export async function updateProviderProfile(prevState: any, formData: FormData) 
             contactPhone,
             location,
             profilePicture,
+            providerType,
+            businessName,
+            businessRegNumber,
+            businessAddress,
+            taxNumber,
+            numberOfEmployees,
+            yearsInBusiness,
+            businessDescription,
+            businessLogo,
         },
     })
 
