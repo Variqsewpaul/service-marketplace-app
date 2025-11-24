@@ -1,7 +1,11 @@
 import { Button } from "@/components/ui/Button";
 import Link from "next/link";
+import { auth } from "@/auth";
 
-export default function Home() {
+export default async function Home() {
+  const session = await auth()
+  const isProvider = session?.user && session.user.role === "PROVIDER"
+
   return (
     <div className="flex flex-col">
       {/* Hero Section */}
@@ -21,11 +25,19 @@ export default function Home() {
                 Find a Service
               </Button>
             </Link>
-            <Link href="/become-a-provider">
-              <Button variant="outline" size="lg" className="w-full sm:w-auto text-base px-8">
-                Become a Provider
-              </Button>
-            </Link>
+            {isProvider ? (
+              <Link href="/profile?tab=services">
+                <Button variant="outline" size="lg" className="w-full sm:w-auto text-base px-8">
+                  View Dashboard
+                </Button>
+              </Link>
+            ) : (
+              <Link href="/become-a-provider">
+                <Button variant="outline" size="lg" className="w-full sm:w-auto text-base px-8">
+                  Become a Provider
+                </Button>
+              </Link>
+            )}
           </div>
         </div>
 

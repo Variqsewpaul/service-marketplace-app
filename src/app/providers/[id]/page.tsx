@@ -1,0 +1,175 @@
+import { auth } from "@/auth"
+import { redirect, notFound } from "next/navigation"
+import { db } from "@/lib/db"
+import Link from "next/link"
+import { Button } from "@/components/ui/Button"
+import { ContactButton } from "@/components/messages/ContactButton"
+
+export default async function ProviderPublicPage({ params }: { params: Promise<{ id: string }> }) {
+    const { id } = await params
+
+    const provider = await db.user.findUnique({
+        where: { id, role: "PROVIDER" },
+        include: {
+            providerProfile: {
+                include: {
+                    portfolioItems: {
+                        orderBy: { createdAt: "desc" }
+                    }
+                }
+            }
+        }
+    })
+
+    if (!provider || !provider.providerProfile) {
+        notFound()
+    }
+
+    const profile = provider.providerProfile
+    const skills = profile.skills?.split(",").map(s => s.trim()).filter(Boolean) || []
+
+    return (
+        <div className="min-h-screen bg-background">
+            {/* Hero Section */}
+            <div className="relative bg-gradient-to-br from-primary/20 via-primary/10 to-background border-b">
+                <div className="container-custom py-16">
+                    <div className="flex flex-col md:flex-row gap-6 items-start">
+                        {/* Avatar */}
+                        <div className="w-32 h-32 rounded-full bg-primary/20 flex items-center justify-center text-4xl font-bold text-primary border-4 border-background shadow-lg overflow-hidden">
+                            {profile.profilePicture ? (
+                                <img src={profile.profilePicture} alt={provider.name || "Provider"} className="w-full h-full object-cover" />
+                            ) : (
+                                provider.name?.charAt(0).toUpperCase() || "P"
+                            )}
+                        </div>
+
+                        {/* Info */}
+                        <div className="flex-1">
+                            <h1 className="text-4xl font-bold tracking-tight mb-2">{provider.name}</h1>
+                            <div className="flex flex-wrap gap-3 mb-4">
+                                {profile.category && (
+                                    <span className="inline-flex items-center px-3 py-1 rounded-full text-sm font-medium bg-primary/10 text-primary border border-primary/20">
+                                        {profile.category.replace("_", " ").toUpperCase()}
+                                    </span>
+                                )}
+                                {profile.location && (
+                                    <span className="inline-flex items-center gap-1 text-sm text-muted-foreground">
+                                        📍 {profile.location}
+                                    </span>
+                                )}
+                            </div>
+                            {profile.bio && (
+                                <p className="text-lg text-muted-foreground max-w-2xl">{profile.bio}</p>
+                            )}
+                        </div>
+
+                        {/* CTA */}
+                        <div className="flex flex-col gap-3">
+                            {profile.hourlyRate && (
+                                <div className="text-right">
+                                    <div className="text-3xl font-bold text-primary">R{profile.hourlyRate}</div>
+                                    <div className="text-sm text-muted-foreground">per hour</div>
+                                </div>
+                            )}
+                            <ContactButton providerId={provider.id} providerName={provider.name || "Provider"} />
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            {/* Main Content */}
+            <div className="container-custom py-12">
+                <div className="grid gap-8 lg:grid-cols-[1fr_350px]">
+                    {/* Left Column - Portfolio & Skills */}
+                    <div className="space-y-8">
+                        {/* Skills */}
+                        {skills.length > 0 && (
+                            <div>
+                                <h2 className="text-2xl font-bold mb-4">Skills & Expertise</h2>
+                                <div className="flex flex-wrap gap-2">
+                                    {skills.map((skill, idx) => (
+                                        <span key={idx} className="px-3 py-1 rounded-md bg-muted text-sm font-medium">
+                                            {skill}
+                                        </span>
+                                    ))}
+                                </div>
+                            </div>
+                        )}
+
+                        {/* Portfolio */}
+                        {profile.portfolioItems && profile.portfolioItems.length > 0 && (
+                            <div>
+                                <h2 className="text-2xl font-bold mb-4">Portfolio</h2>
+                                <div className="grid gap-6 sm:grid-cols-2">
+                                    {profile.portfolioItems.map((item) => (
+                                        <div key={item.id} className="rounded-lg border bg-card overflow-hidden hover:shadow-lg transition-shadow">
+                                            {item.imageUrl && (
+                                                <div className="aspect-video bg-muted relative overflow-hidden">
+                                                    <img
+                                                        src={item.imageUrl}
+                                                        alt={item.title}
+                                                        className="object-cover w-full h-full hover:scale-105 transition-transform duration-300"
+                                                    />
+                                                </div>
+                                            )}
+                                            <div className="p-4">
+                                                <h3 className="font-semibold text-lg mb-1">{item.title}</h3>
+                                                {item.description && (
+                                                    <p className="text-sm text-muted-foreground">{item.description}</p>
+                                                )}
+                                            </div>
+                                        </div>
+                                    ))}
+                                </div>
+                            </div>
+                        )}
+
+                        {(!profile.portfolioItems || profile.portfolioItems.length === 0) && skills.length === 0 && (
+                            <div className="text-center py-12 text-muted-foreground">
+                                <p>This provider hasn't added any portfolio items yet.</p>
+                            </div>
+                        )}
+                    </div>
+
+                    {/* Right Column - Contact Info */}
+                    <div className="space-y-6">
+                        <div className="rounded-lg border bg-card p-6 sticky top-6">
+                            <h3 className="font-semibold text-lg mb-4">Contact Information</h3>
+                            <div className="space-y-4">
+                                {profile.contactEmail && (
+                                    <div>
+                                        <div className="text-sm font-medium text-muted-foreground mb-1">Email</div>
+                                        <a href={`mailto:${profile.contactEmail}`} className="text-primary hover:underline break-all">
+                                            {profile.contactEmail}
+                                        </a>
+                                    </div>
+                                )}
+                                {profile.contactPhone && (
+                                    <div>
+                                        <div className="text-sm font-medium text-muted-foreground mb-1">Phone</div>
+                                        <a href={`tel:${profile.contactPhone}`} className="text-primary hover:underline">
+                                            {profile.contactPhone}
+                                        </a>
+                                    </div>
+                                )}
+                                {profile.location && (
+                                    <div>
+                                        <div className="text-sm font-medium text-muted-foreground mb-1">Service Area</div>
+                                        <p>{profile.location}</p>
+                                    </div>
+                                )}
+                                {profile.hourlyRate && (
+                                    <div>
+                                        <div className="text-sm font-medium text-muted-foreground mb-1">Rate</div>
+                                        <p className="text-2xl font-bold text-primary">R{profile.hourlyRate}/hr</p>
+                                    </div>
+                                )}
+                            </div>
+                            <Button className="w-full mt-6">Book Now</Button>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    )
+}

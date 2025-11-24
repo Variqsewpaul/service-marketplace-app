@@ -2,9 +2,13 @@ import { auth } from "@/auth"
 import { redirect } from "next/navigation"
 import { db } from "@/lib/db"
 import { ProviderProfileForm } from "@/components/profile/ProviderProfileForm"
+import Link from "next/link"
+import { Button } from "@/components/ui/Button"
+import { getConversations } from "@/actions/messages"
 
-export default async function ProfilePage() {
+export default async function ProfilePage({ searchParams }: { searchParams: Promise<{ tab?: string }> }) {
     const session = await auth()
+    const { tab = "general" } = await searchParams
 
     if (!session?.user) {
         redirect("/login")
@@ -14,7 +18,11 @@ export default async function ProfilePage() {
         where: { id: session.user.id },
         include: {
             customerProfile: true,
-            providerProfile: true,
+            providerProfile: {
+                include: {
+                    portfolioItems: true
+                }
+            },
         },
     })
 
@@ -23,11 +31,6 @@ export default async function ProfilePage() {
     }
 
     if (!user.role || user.role === "CUSTOMER" && !user.customerProfile && !user.providerProfile) {
-        // If no role or profile, redirect to onboarding. 
-        // Note: schema default is CUSTOMER, so we check for profile existence too.
-        // But wait, if they are CUSTOMER by default but haven't gone through onboarding, 
-        // they might not have a customerProfile entry if we only create it in updateRole.
-        // So checking for profile existence is key.
         redirect("/onboarding")
     }
 
@@ -42,44 +45,143 @@ export default async function ProfilePage() {
 
             <div className="grid gap-8 md:grid-cols-[250px_1fr]">
                 <nav className="flex flex-col gap-2 text-sm font-medium text-muted-foreground">
-                    <a href="#" className="text-primary font-semibold">
+                    <Link
+                        href="/profile?tab=general"
+                        className={`transition-colors ${tab === "general" ? "text-primary font-semibold" : "hover:text-foreground"}`}
+                    >
                         General
-                    </a>
-                    <a href="#" className="hover:text-foreground transition-colors">
+                    </Link>
+                    <Link
+                        href="/profile?tab=security"
+                        className={`transition-colors ${tab === "security" ? "text-primary font-semibold" : "hover:text-foreground"}`}
+                    >
                         Security
-                    </a>
+                    </Link>
                     {user.role === "PROVIDER" && (
-                        <a href="#" className="hover:text-foreground transition-colors">
-                            Services
-                        </a>
+                        <>
+                            <Link
+                                href="/profile?tab=services"
+                                className={`transition-colors ${tab === "services" ? "text-primary font-semibold" : "hover:text-foreground"}`}
+                            >
+                                Services
+                            </Link>
+                            <Link
+                                href="/profile?tab=messages"
+                                className={`transition-colors ${tab === "messages" ? "text-primary font-semibold" : "hover:text-foreground"}`}
+                            >
+                                Messages
+                            </Link>
+                        </>
                     )}
                 </nav>
 
                 <div className="space-y-6">
-                    <div className="rounded-lg border bg-card text-card-foreground shadow-sm p-6">
-                        <h2 className="text-xl font-semibold mb-4">Personal Information</h2>
-                        <div className="grid gap-4">
-                            <div>
-                                <label className="text-sm font-medium">Name</label>
-                                <div className="mt-1 p-2 bg-muted rounded-md">{user.name}</div>
-                            </div>
-                            <div>
-                                <label className="text-sm font-medium">Email</label>
-                                <div className="mt-1 p-2 bg-muted rounded-md">{user.email}</div>
-                            </div>
-                            <div>
-                                <label className="text-sm font-medium">Role</label>
-                                <div className="mt-1 p-2 bg-muted rounded-md">{user.role}</div>
+                    {tab === "general" && (
+                        <div className="rounded-lg border bg-card text-card-foreground shadow-sm p-6">
+                            <h2 className="text-xl font-semibold mb-4">Personal Information</h2>
+                            <div className="grid gap-4">
+                                <div>
+                                    <label className="text-sm font-medium">Name</label>
+                                    <div className="mt-1 p-2 bg-muted rounded-md">{user.name}</div>
+                                </div>
+                                <div>
+                                    <label className="text-sm font-medium">Email</label>
+                                    <div className="mt-1 p-2 bg-muted rounded-md">{user.email}</div>
+                                </div>
+                                <div>
+                                    <label className="text-sm font-medium">Role</label>
+                                    <div className="mt-1 p-2 bg-muted rounded-md">{user.role}</div>
+                                </div>
                             </div>
                         </div>
-                    </div>
+                    )}
 
-                    {user.role === "PROVIDER" && user.providerProfile && (
+                    {tab === "security" && (
                         <div className="rounded-lg border bg-card text-card-foreground shadow-sm p-6">
-                            <h2 className="text-xl font-semibold mb-4">Provider Details</h2>
+                            <h2 className="text-xl font-semibold mb-4">Security Settings</h2>
+                            <p className="text-muted-foreground mb-4">Manage your password and linked accounts.</p>
+
+                            <div className="space-y-4">
+                                <div className="p-4 border rounded-md">
+                                    <h3 className="font-medium mb-2">Linked Accounts</h3>
+                                    <p className="text-sm text-muted-foreground mb-4">Connect your social accounts for easier login.</p>
+                                    {/* This is likely where the "Add Account" button should be */}
+                                    <Button variant="outline">Add Account</Button>
+                                </div>
+
+                                <div className="p-4 border rounded-md">
+                                    <h3 className="font-medium mb-2">Password</h3>
+                                    <Button variant="outline">Change Password</Button>
+                                </div>
+                            </div>
+                        </div>
+                    )}
+
+                    {tab === "services" && user.role === "PROVIDER" && user.providerProfile && (
+                        <div className="rounded-lg border bg-card text-card-foreground shadow-sm p-6">
+                            <div className="flex items-center justify-between mb-4">
+                                <h2 className="text-xl font-semibold">Provider Details</h2>
+                                <Link href={`/providers/${user.id}`} target="_blank">
+                                    <Button variant="outline" size="sm">
+                                        👁️ Preview Public Profile
+                                    </Button>
+                                </Link>
+                            </div>
                             <ProviderProfileForm initialData={user.providerProfile} />
                         </div>
                     )}
+
+                    {tab === "messages" && user.role === "PROVIDER" && (async () => {
+                        const conversations = await getConversations()
+
+                        return (
+                            <div className="rounded-lg border bg-card text-card-foreground shadow-sm p-6">
+                                <h2 className="text-xl font-semibold mb-4">Messages</h2>
+
+                                {conversations.length > 0 ? (
+                                    <div className="space-y-3">
+                                        {conversations.map((conv: any) => (
+                                            <Link
+                                                key={conv.partner.id}
+                                                href={`/profile?tab=messages&partnerId=${conv.partner.id}`}
+                                                className="block p-4 rounded-lg border hover:bg-muted/50 transition-colors"
+                                            >
+                                                <div className="flex items-start justify-between">
+                                                    <div className="flex-1">
+                                                        <div className="flex items-center gap-2 mb-1">
+                                                            <h3 className="font-semibold">{conv.partner.name || conv.partner.email}</h3>
+                                                            {conv.unreadCount > 0 && (
+                                                                <span className="bg-primary text-primary-foreground text-xs px-2 py-0.5 rounded-full">
+                                                                    {conv.unreadCount}
+                                                                </span>
+                                                            )}
+                                                        </div>
+                                                        {conv.messages[0] && (
+                                                            <p className="text-sm text-muted-foreground line-clamp-1">
+                                                                {conv.messages[0].content}
+                                                            </p>
+                                                        )}
+                                                    </div>
+                                                    {conv.messages[0] && (
+                                                        <span className="text-xs text-muted-foreground">
+                                                            {new Date(conv.messages[0].createdAt).toLocaleDateString()}
+                                                        </span>
+                                                    )}
+                                                </div>
+                                            </Link>
+                                        ))}
+                                    </div>
+                                ) : (
+                                    <div className="text-center py-12 border-2 border-dashed rounded-lg">
+                                        <p className="text-sm text-muted-foreground">No messages yet</p>
+                                        <p className="text-xs text-muted-foreground mt-1">
+                                            Customers can contact you through your public profile
+                                        </p>
+                                    </div>
+                                )}
+                            </div>
+                        )
+                    })()}
                 </div>
             </div>
         </div>

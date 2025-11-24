@@ -24,6 +24,10 @@ model User {
   // Profile relations
   customerProfile CustomerProfile?
   providerProfile ProviderProfile?
+  
+  // Message relations
+  sentMessages     Message[] @relation("SentMessages")
+  receivedMessages Message[] @relation("ReceivedMessages")
 }
 
 model Account {
@@ -70,5 +74,39 @@ model ProviderProfile {
   hourlyRate  Float?
   category    String?
   
-  // Add provider specific fields here (e.g., portfolio, availability)
+  skills        String?
+  contactEmail  String?
+  contactPhone  String?
+  location      String?
+  profilePicture String?
+  
+  portfolioItems PortfolioItem[]
 }
+
+model PortfolioItem {
+  id                String          @id @default(cuid())
+  title             String
+  description       String?
+  imageUrl          String?
+  providerProfileId String
+  providerProfile   ProviderProfile @relation(fields: [providerProfileId], references: [id], onDelete: Cascade)
+  
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+}
+
+model Message {
+  id         String   @id @default(cuid())
+  content    String
+  senderId   String
+  receiverId String
+  read       Boolean  @default(false)
+  createdAt  DateTime @default(now())
+  
+  sender   User @relation("SentMessages", fields: [senderId], references: [id], onDelete: Cascade)
+  receiver User @relation("ReceivedMessages", fields: [receiverId], references: [id], onDelete: Cascade)
+  
+  @@index([senderId])
+  @@index([receiverId])
+}
+
