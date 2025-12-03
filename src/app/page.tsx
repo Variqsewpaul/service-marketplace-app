@@ -12,31 +12,48 @@ export default async function Home() {
       <section className="relative py-20 md:py-32 bg-gradient-to-b from-primary/5 to-background overflow-hidden">
         <div className="container-custom relative z-10 text-center">
           <h1 className="text-4xl md:text-6xl font-extrabold tracking-tight text-foreground mb-6">
-            Find the Perfect <span className="text-primary">Professional</span><br />
-            for Your Needs
+            Post Your Job & <span className="text-primary">Get Quotes</span><br />
+            from Local Pros
           </h1>
           <p className="text-lg md:text-xl text-muted-foreground max-w-2xl mx-auto mb-10">
-            From home repairs to personal training, connect with trusted experts in your area.
-            Book services instantly with confidence.
+            Describe what you need done, receive quotes from trusted professionals, and hire the best match.
           </p>
           <div className="flex flex-col sm:flex-row items-center justify-center gap-4">
-            <Link href="/services">
-              <Button size="lg" className="w-full sm:w-auto text-base px-8">
-                Find a Service
-              </Button>
-            </Link>
-            {isProvider ? (
-              <Link href="/profile?tab=services">
-                <Button variant="outline" size="lg" className="w-full sm:w-auto text-base px-8">
-                  View Dashboard
-                </Button>
-              </Link>
+            {session?.user ? (
+              <>
+                <Link href="/dashboard">
+                  <Button size="lg" className="w-full sm:w-auto text-base px-8">
+                    Go to Dashboard
+                  </Button>
+                </Link>
+                {!isProvider && (
+                  <Link href="/post-job">
+                    <Button variant="outline" size="lg" className="w-full sm:w-auto text-base px-8">
+                      Post a Job
+                    </Button>
+                  </Link>
+                )}
+                {isProvider && (
+                  <Link href="/leads">
+                    <Button variant="outline" size="lg" className="w-full sm:w-auto text-base px-8">
+                      Find Leads
+                    </Button>
+                  </Link>
+                )}
+              </>
             ) : (
-              <Link href="/become-a-provider">
-                <Button variant="outline" size="lg" className="w-full sm:w-auto text-base px-8">
-                  Become a Provider
-                </Button>
-              </Link>
+              <>
+                <Link href="/post-job">
+                  <Button size="lg" className="w-full sm:w-auto text-base px-8">
+                    Post a Job for Free
+                  </Button>
+                </Link>
+                <Link href="/become-a-provider">
+                  <Button variant="outline" size="lg" className="w-full sm:w-auto text-base px-8">
+                    Join as a Pro
+                  </Button>
+                </Link>
+              </>
             )}
           </div>
         </div>

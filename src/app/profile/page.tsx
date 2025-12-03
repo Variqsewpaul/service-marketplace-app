@@ -2,9 +2,13 @@ import { auth } from "@/auth"
 import { redirect } from "next/navigation"
 import { db } from "@/lib/db"
 import { ProviderProfileForm } from "@/components/profile/ProviderProfileForm"
+import ServiceManager from "@/components/dashboard/ServiceManager"
 import Link from "next/link"
 import { Button } from "@/components/ui/Button"
 import { getConversations } from "@/actions/messages"
+import PayoutAccountClient from "@/components/payment/PayoutAccountClient"
+import { getSubaccountStatus } from "@/actions/paystack-subaccounts"
+import CustomerPaymentHistory from "@/components/payment/CustomerPaymentHistory"
 
 export default async function ProfilePage({ searchParams }: { searchParams: Promise<{ tab?: string }> }) {
     const session = await auth()
@@ -20,7 +24,10 @@ export default async function ProfilePage({ searchParams }: { searchParams: Prom
             customerProfile: true,
             providerProfile: {
                 include: {
-                    portfolioItems: true
+                    portfolioItems: true,
+                    serviceOfferings: {
+                        orderBy: { createdAt: 'desc' }
+                    }
                 }
             },
         },
@@ -32,6 +39,37 @@ export default async function ProfilePage({ searchParams }: { searchParams: Prom
 
     if (!user.role || user.role === "CUSTOMER" && !user.customerProfile && !user.providerProfile) {
         redirect("/onboarding")
+    }
+
+    // Get payout account status if provider
+    let accountStatus = null;
+    if (user.role === "PROVIDER") {
+        accountStatus = await getSubaccountStatus();
+    }
+
+    // Get customer transactions if customer
+    let customerTransactions: any[] = [];
+    if (user.role === "CUSTOMER") {
+        customerTransactions = await db.transaction.findMany({
+            where: { customerId: user.id },
+            orderBy: { createdAt: 'desc' },
+            include: {
+                booking: {
+                    select: {
+                        id: true,
+                        serviceTitle: true,
+                        providerProfile: {
+                            select: {
+                                businessName: true,
+                                user: {
+                                    select: { name: true }
+                                }
+                            }
+                        }
+                    }
+                }
+            }
+        });
     }
 
     return (
@@ -71,7 +109,21 @@ export default async function ProfilePage({ searchParams }: { searchParams: Prom
                             >
                                 Messages
                             </Link>
+                            <Link
+                                href="/profile?tab=payouts"
+                                className={`transition-colors ${tab === "payouts" ? "text-primary font-semibold" : "hover:text-foreground"}`}
+                            >
+                                Payouts
+                            </Link>
                         </>
+                    )}
+                    {user.role === "CUSTOMER" && (
+                        <Link
+                            href="/profile?tab=payments"
+                            className={`transition-colors ${tab === "payments" ? "text-primary font-semibold" : "hover:text-foreground"}`}
+                        >
+                            Payments
+                        </Link>
                     )}
                 </nav>
 
@@ -128,6 +180,30 @@ export default async function ProfilePage({ searchParams }: { searchParams: Prom
                                 </Link>
                             </div>
                             <ProviderProfileForm initialData={user.providerProfile} />
+
+                            <div className="mt-8 pt-8 border-t border-gray-100">
+                                <ServiceManager services={user.providerProfile.serviceOfferings} />
+                            </div>
+                        </div>
+                    )}
+
+                    {tab === "payouts" && user.role === "PROVIDER" && accountStatus && !('error' in accountStatus) && (
+                        <div className="rounded-lg border bg-card text-card-foreground shadow-sm p-6">
+                            <h2 className="text-xl font-semibold mb-4">Payout Settings</h2>
+                            <p className="text-muted-foreground mb-6">
+                                Manage your banking details to receive payments from customers.
+                            </p>
+                            <PayoutAccountClient accountStatus={accountStatus as any} />
+                        </div>
+                    )}
+
+                    {tab === "payments" && user.role === "CUSTOMER" && (
+                        <div className="rounded-lg border bg-card text-card-foreground shadow-sm p-6">
+                            <h2 className="text-xl font-semibold mb-4">Payment History</h2>
+                            <p className="text-muted-foreground mb-6">
+                                View your past transactions and payments.
+                            </p>
+                            <CustomerPaymentHistory transactions={customerTransactions} />
                         </div>
                     )}
 

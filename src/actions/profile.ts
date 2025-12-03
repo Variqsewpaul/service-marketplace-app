@@ -24,7 +24,10 @@ export async function updateRole(role: "CUSTOMER" | "PROVIDER") {
         })
     } else {
         await db.providerProfile.create({
-            data: { userId: session.user.id },
+            data: {
+                userId: session.user.id,
+                leadCredits: 10 // Give 10 free credits to start
+            },
         })
     }
 

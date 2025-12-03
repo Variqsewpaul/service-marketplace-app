@@ -1,12 +1,19 @@
 import { auth } from "@/auth"
 import { redirect, notFound } from "next/navigation"
 import { db } from "@/lib/db"
+import { prisma } from "@/lib/prisma"
 import Link from "next/link"
 import { Button } from "@/components/ui/Button"
 import { ContactButton } from "@/components/messages/ContactButton"
+import ServiceList from "@/components/providers/ServiceList"
+import { shouldRevealContact, maskContactInfo } from "@/lib/contact-reveal"
+import { BookingStatus, SubscriptionTier } from "@/types/monetization"
+import { SUBSCRIPTION_TIERS } from "@/lib/pricing-config"
+import BookingButton from "@/components/booking/BookingButton"
 
 export default async function ProviderPublicPage({ params }: { params: Promise<{ id: string }> }) {
     const { id } = await params
+    const session = await auth()
 
     const provider = await db.user.findUnique({
         where: { id, role: "PROVIDER" },
@@ -14,6 +21,9 @@ export default async function ProviderPublicPage({ params }: { params: Promise<{
             providerProfile: {
                 include: {
                     portfolioItems: {
+                        orderBy: { createdAt: "desc" as const }
+                    },
+                    serviceOfferings: {
                         orderBy: { createdAt: "desc" as const }
                     }
                 }
@@ -28,6 +38,29 @@ export default async function ProviderPublicPage({ params }: { params: Promise<{
     const profile = provider.providerProfile
     const skills = profile.skills?.split(",").map((s: string) => s.trim()).filter(Boolean) || []
 
+    // Check if contact should be revealed
+    let hasConfirmedBooking = false
+    if (session?.user?.id && session.user.id !== provider.id) {
+        const confirmedBooking = await prisma.booking.findFirst({
+            where: {
+                customerId: session.user.id,
+                providerId: profile.id,
+                status: { in: [BookingStatus.CONFIRMED, BookingStatus.IN_PROGRESS, BookingStatus.COMPLETED] },
+            },
+        })
+        hasConfirmedBooking = !!confirmedBooking
+    }
+
+    const revealContact = shouldRevealContact(
+        session?.user?.id || '',
+        provider.id,
+        hasConfirmedBooking,
+        profile.autoRevealContact
+    )
+
+    // Mask contact info if not revealed
+    const displayProfile = revealContact ? profile : maskContactInfo(profile)
+
     // Determine display name and image
     const isBusiness = (profile as any).providerType === "BUSINESS"
     const displayName = isBusiness ? (profile as any).businessName || provider.name : provider.name
@@ -39,6 +72,15 @@ export default async function ProviderPublicPage({ params }: { params: Promise<{
             {/* Hero Section */}
             <div className="relative bg-gradient-to-br from-primary/20 via-primary/10 to-background border-b">
                 <div className="container-custom py-16">
+                    {session?.user?.id === provider.id && (
+                        <div className="mb-6 bg-yellow-50 border border-yellow-200 rounded-lg p-4 flex items-center gap-3 text-yellow-800">
+                            <span className="text-xl">👁️</span>
+                            <div>
+                                <p className="font-semibold">You are viewing your own public profile</p>
+                                <p className="text-sm">Contact details and hidden information are visible to you. Customers will not see this until they pay a deposit.</p>
+                            </div>
+                        </div>
+                    )}
                     <div className="flex flex-col md:flex-row gap-6 items-start">
                         {/* Avatar */}
                         <div className="w-32 h-32 rounded-lg bg-primary/20 flex items-center justify-center text-4xl font-bold text-primary border-4 border-background shadow-lg overflow-hidden">
@@ -56,6 +98,11 @@ export default async function ProviderPublicPage({ params }: { params: Promise<{
                                 {isBusiness && (
                                     <span className="px-2 py-1 rounded-md bg-blue-100 text-blue-700 text-xs font-bold border border-blue-200">
                                         BUSINESS
+                                    </span>
+                                )}
+                                {profile.subscriptionTier === SubscriptionTier.PRO && (
+                                    <span className="px-2 py-1 rounded-md bg-purple-100 text-purple-700 text-xs font-bold border border-purple-200">
+                                        ⭐ PRO
                                     </span>
                                 )}
                             </div>
@@ -84,12 +131,7 @@ export default async function ProviderPublicPage({ params }: { params: Promise<{
 
                         {/* CTA */}
                         <div className="flex flex-col gap-3">
-                            {profile.hourlyRate && (
-                                <div className="text-right">
-                                    <div className="text-3xl font-bold text-primary">R{profile.hourlyRate}</div>
-                                    <div className="text-sm text-muted-foreground">per hour</div>
-                                </div>
-                            )}
+
                             <ContactButton providerId={provider.id} providerName={displayName || "Provider"} />
                         </div>
                     </div>
@@ -133,6 +175,9 @@ export default async function ProviderPublicPage({ params }: { params: Promise<{
                                 </div>
                             </div>
                         )}
+
+                        {/* Service Offerings */}
+                        <ServiceList services={(profile as any).serviceOfferings || []} />
 
                         {/* Skills */}
                         {skills.length > 0 && (
@@ -187,21 +232,36 @@ export default async function ProviderPublicPage({ params }: { params: Promise<{
                     <div className="space-y-6">
                         <div className="rounded-lg border bg-card p-6 sticky top-6">
                             <h3 className="font-semibold text-lg mb-4">Contact Information</h3>
+
+                            {!revealContact && (
+                                <div className="bg-blue-50 border border-blue-200 rounded p-3 mb-4 text-sm text-blue-800">
+                                    🔒 Contact details will be revealed after you confirm a booking
+                                </div>
+                            )}
+
                             <div className="space-y-4">
-                                {profile.contactEmail && (
+                                {displayProfile.contactEmail && (
                                     <div>
                                         <div className="text-sm font-medium text-muted-foreground mb-1">Email</div>
-                                        <a href={`mailto:${profile.contactEmail}`} className="text-primary hover:underline break-all">
-                                            {profile.contactEmail}
-                                        </a>
+                                        {revealContact ? (
+                                            <a href={`mailto:${displayProfile.contactEmail}`} className="text-primary hover:underline break-all">
+                                                {displayProfile.contactEmail}
+                                            </a>
+                                        ) : (
+                                            <span className="text-gray-500">{displayProfile.contactEmail}</span>
+                                        )}
                                     </div>
                                 )}
-                                {profile.contactPhone && (
+                                {displayProfile.contactPhone && (
                                     <div>
                                         <div className="text-sm font-medium text-muted-foreground mb-1">Phone</div>
-                                        <a href={`tel:${profile.contactPhone}`} className="text-primary hover:underline">
-                                            {profile.contactPhone}
-                                        </a>
+                                        {revealContact ? (
+                                            <a href={`tel:${displayProfile.contactPhone}`} className="text-primary hover:underline">
+                                                {displayProfile.contactPhone}
+                                            </a>
+                                        ) : (
+                                            <span className="text-gray-500">{displayProfile.contactPhone}</span>
+                                        )}
                                     </div>
                                 )}
                                 {profile.location && (
@@ -212,12 +272,18 @@ export default async function ProviderPublicPage({ params }: { params: Promise<{
                                 )}
                                 {profile.hourlyRate && (
                                     <div>
-                                        <div className="text-sm font-medium text-muted-foreground mb-1">Rate</div>
-                                        <p className="text-2xl font-bold text-primary">R{profile.hourlyRate}/hr</p>
+                                        <div className="text-sm font-medium text-muted-foreground mb-1">Hourly Rate</div>
+                                        <p className="text-lg font-bold text-primary">R{profile.hourlyRate}/hr</p>
                                     </div>
                                 )}
                             </div>
-                            <Button className="w-full mt-6">Book Now</Button>
+
+                            <BookingButton
+                                providerId={profile.id}
+                                providerName={displayName || 'Provider'}
+                                providerTier={profile.subscriptionTier as SubscriptionTier}
+                                defaultServicePrice={profile.hourlyRate || undefined}
+                            />
                         </div>
                     </div>
                 </div>

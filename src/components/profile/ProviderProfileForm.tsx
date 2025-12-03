@@ -2,7 +2,8 @@
 
 import { Button } from "@/components/ui/Button"
 import { updateProviderProfile, addPortfolioItem, deletePortfolioItem } from "@/actions/profile"
-import { useActionState, useState, useCallback } from "react"
+import { useActionState, useState, useCallback, useEffect } from "react"
+import { SERVICE_CATEGORIES } from "@/lib/constants"
 
 export function ProviderProfileForm({ initialData }: { initialData: any }) {
     const [state, dispatch, isPending] = useActionState(updateProviderProfile, undefined)
@@ -20,6 +21,20 @@ export function ProviderProfileForm({ initialData }: { initialData: any }) {
 
     // Business logo state
     const [businessLogoPreview, setBusinessLogoPreview] = useState<string>(initialData?.businessLogo || "")
+
+    // State for custom category
+    const [selectedCategory, setSelectedCategory] = useState(initialData?.category || "");
+    const [isCustomCategory, setIsCustomCategory] = useState(false);
+
+    // Check if initial category is not in the standard list
+    const standardCategories = SERVICE_CATEGORIES;
+
+    useEffect(() => {
+        if (initialData?.category && !standardCategories.includes(initialData.category)) {
+            setIsCustomCategory(true);
+            setSelectedCategory("other");
+        }
+    }, [initialData]);
 
     const handleDragOver = useCallback((e: React.DragEvent) => {
         e.preventDefault()
@@ -78,14 +93,43 @@ export function ProviderProfileForm({ initialData }: { initialData: any }) {
         }
     }, [])
 
+    {/* Helper Component for Labels with Tooltips */ }
+    const InfoLabel = ({ label, tooltip }: { label: string, tooltip: string }) => (
+        <div className="flex items-center gap-2 mb-2">
+            <label className="block text-sm font-medium text-foreground">
+                {label}
+            </label>
+            <div className="group relative flex items-center justify-center">
+                <div className="w-4 h-4 rounded-full border border-muted-foreground/50 text-muted-foreground text-[10px] flex items-center justify-center cursor-help transition-colors hover:border-primary hover:text-primary">
+                    i
+                </div>
+                {/* Tooltip with improved visibility - dark background and white text */}
+                <div className="absolute bottom-full left-1/2 -translate-x-1/2 mb-2 w-48 p-2 bg-slate-900 text-white text-xs rounded shadow-lg border border-slate-700 opacity-0 invisible group-hover:opacity-100 group-hover:visible transition-all z-50 pointer-events-none">
+                    {tooltip}
+                    <div className="absolute top-full left-1/2 -translate-x-1/2 border-4 border-transparent border-t-slate-900"></div>
+                </div>
+            </div>
+        </div>
+    )
+
     return (
         <div className="space-y-8 max-w-xl">
-            <form action={dispatch} className="space-y-6">
+            <form action={async (formData) => {
+                // If custom category is selected, use the custom input value
+                if (isCustomCategory) {
+                    const customValue = formData.get("customCategory") as string;
+                    if (customValue) {
+                        formData.set("category", customValue);
+                    }
+                }
+                await dispatch(formData);
+            }} className="space-y-6">
                 {/* Provider Type Selection */}
                 <div className="space-y-3">
-                    <label className="block text-sm font-medium text-foreground">
-                        I am registering as:
-                    </label>
+                    <InfoLabel
+                        label="I am registering as:"
+                        tooltip="Choose 'Individual' if you work alone, or 'Business' if you represent a registered company."
+                    />
                     <div className="flex gap-4">
                         <label className="flex items-center gap-2 cursor-pointer border rounded-md p-3 flex-1 hover:bg-muted/50 transition-colors has-[:checked]:border-primary has-[:checked]:bg-primary/5">
                             <input
@@ -125,9 +169,10 @@ export function ProviderProfileForm({ initialData }: { initialData: any }) {
 
                         {/* Business Logo */}
                         <div>
-                            <label className="block text-sm font-medium text-foreground mb-2">
-                                Business Logo
-                            </label>
+                            <InfoLabel
+                                label="Business Logo"
+                                tooltip="Upload your official company logo. This will be displayed on your profile."
+                            />
                             <div
                                 className="border-2 border-dashed rounded-md p-4 text-center cursor-pointer transition-colors hover:border-primary/50"
                                 onClick={() => document.getElementById("business-logo-upload")?.click()}
@@ -159,9 +204,10 @@ export function ProviderProfileForm({ initialData }: { initialData: any }) {
                         </div>
 
                         <div>
-                            <label htmlFor="businessName" className="block text-sm font-medium text-foreground">
-                                Business Name <span className="text-destructive">*</span>
-                            </label>
+                            <InfoLabel
+                                label="Business Name"
+                                tooltip="The registered name of your company as it appears on official documents."
+                            />
                             <input
                                 type="text"
                                 id="businessName"
@@ -169,54 +215,62 @@ export function ProviderProfileForm({ initialData }: { initialData: any }) {
                                 required={providerType === "BUSINESS"}
                                 defaultValue={initialData?.businessName || ""}
                                 className="mt-1 block w-full rounded-md border border-input bg-background px-3 py-2 text-sm ring-offset-background placeholder:text-muted-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2"
+                                placeholder="e.g. Acme Plumbing Solutions (Pty) Ltd"
                             />
                         </div>
 
                         <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                             <div>
-                                <label htmlFor="businessRegNumber" className="block text-sm font-medium text-foreground">
-                                    Registration Number
-                                </label>
+                                <InfoLabel
+                                    label="Registration Number"
+                                    tooltip="Your CIPC registration number (e.g. 2023/123456/07)."
+                                />
                                 <input
                                     type="text"
                                     id="businessRegNumber"
                                     name="businessRegNumber"
                                     defaultValue={initialData?.businessRegNumber || ""}
                                     className="mt-1 block w-full rounded-md border border-input bg-background px-3 py-2 text-sm ring-offset-background placeholder:text-muted-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2"
+                                    placeholder="e.g. 2023/123456/07"
                                 />
                             </div>
                             <div>
-                                <label htmlFor="taxNumber" className="block text-sm font-medium text-foreground">
-                                    Tax/VAT Number
-                                </label>
+                                <InfoLabel
+                                    label="Tax/VAT Number"
+                                    tooltip="Your SARS Tax or VAT reference number."
+                                />
                                 <input
                                     type="text"
                                     id="taxNumber"
                                     name="taxNumber"
                                     defaultValue={initialData?.taxNumber || ""}
                                     className="mt-1 block w-full rounded-md border border-input bg-background px-3 py-2 text-sm ring-offset-background placeholder:text-muted-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2"
+                                    placeholder="e.g. 4123456789"
                                 />
                             </div>
                         </div>
 
                         <div>
-                            <label htmlFor="businessAddress" className="block text-sm font-medium text-foreground">
-                                Business Address
-                            </label>
+                            <InfoLabel
+                                label="Business Address"
+                                tooltip="The physical address of your business headquarters."
+                            />
                             <input
                                 type="text"
                                 id="businessAddress"
                                 name="businessAddress"
                                 defaultValue={initialData?.businessAddress || ""}
                                 className="mt-1 block w-full rounded-md border border-input bg-background px-3 py-2 text-sm ring-offset-background placeholder:text-muted-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2"
+                                placeholder="e.g. 123 Main Street, Sandton, Johannesburg"
                             />
                         </div>
 
                         <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                             <div>
-                                <label htmlFor="numberOfEmployees" className="block text-sm font-medium text-foreground">
-                                    Number of Employees
-                                </label>
+                                <InfoLabel
+                                    label="Number of Employees"
+                                    tooltip="Total number of staff members currently employed."
+                                />
                                 <input
                                     type="number"
                                     id="numberOfEmployees"
@@ -224,12 +278,14 @@ export function ProviderProfileForm({ initialData }: { initialData: any }) {
                                     min="1"
                                     defaultValue={initialData?.numberOfEmployees || ""}
                                     className="mt-1 block w-full rounded-md border border-input bg-background px-3 py-2 text-sm ring-offset-background placeholder:text-muted-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2"
+                                    placeholder="e.g. 5"
                                 />
                             </div>
                             <div>
-                                <label htmlFor="yearsInBusiness" className="block text-sm font-medium text-foreground">
-                                    Years in Business
-                                </label>
+                                <InfoLabel
+                                    label="Years in Business"
+                                    tooltip="How many years has your company been operating?"
+                                />
                                 <input
                                     type="number"
                                     id="yearsInBusiness"
@@ -237,21 +293,23 @@ export function ProviderProfileForm({ initialData }: { initialData: any }) {
                                     min="0"
                                     defaultValue={initialData?.yearsInBusiness || ""}
                                     className="mt-1 block w-full rounded-md border border-input bg-background px-3 py-2 text-sm ring-offset-background placeholder:text-muted-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2"
+                                    placeholder="e.g. 3"
                                 />
                             </div>
                         </div>
 
                         <div>
-                            <label htmlFor="businessDescription" className="block text-sm font-medium text-foreground">
-                                Business Description
-                            </label>
+                            <InfoLabel
+                                label="Business Description"
+                                tooltip="A detailed description of your company, its mission, and what sets it apart."
+                            />
                             <textarea
                                 id="businessDescription"
                                 name="businessDescription"
                                 rows={3}
                                 defaultValue={initialData?.businessDescription || ""}
                                 className="mt-1 block w-full rounded-md border border-input bg-background px-3 py-2 text-sm ring-offset-background placeholder:text-muted-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2"
-                                placeholder="Describe your company..."
+                                placeholder="e.g. We are a family-owned plumbing business specializing in residential repairs and renovations with over 10 years of experience..."
                             />
                         </div>
                     </div>
@@ -259,9 +317,10 @@ export function ProviderProfileForm({ initialData }: { initialData: any }) {
 
                 {/* Profile Picture - Show different label for business */}
                 <div>
-                    <label className="block text-sm font-medium text-foreground mb-2">
-                        {providerType === "BUSINESS" ? "Representative Profile Picture" : "Profile Picture"}
-                    </label>
+                    <InfoLabel
+                        label={providerType === "BUSINESS" ? "Representative Profile Picture" : "Profile Picture"}
+                        tooltip="A clear photo of yourself (or the business representative) to build trust with customers."
+                    />
                     <div
                         className="border-2 border-dashed rounded-md p-4 text-center cursor-pointer transition-colors hover:border-primary/50"
                         onClick={() => document.getElementById("profile-pic-upload")?.click()}
@@ -293,115 +352,124 @@ export function ProviderProfileForm({ initialData }: { initialData: any }) {
                 </div>
 
                 <div>
-                    <label htmlFor="bio" className="block text-sm font-medium text-foreground">
-                        {providerType === "BUSINESS" ? "Representative Bio" : "Bio"}
-                    </label>
+                    <InfoLabel
+                        label={providerType === "BUSINESS" ? "Representative Bio" : "Bio"}
+                        tooltip="Tell customers about your experience, qualifications, and why they should hire you."
+                    />
                     <textarea
                         id="bio"
                         name="bio"
                         rows={4}
                         defaultValue={initialData?.bio || ""}
                         className="mt-1 block w-full rounded-md border border-input bg-background px-3 py-2 text-sm ring-offset-background placeholder:text-muted-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2"
-                        placeholder={providerType === "BUSINESS" ? "Tell us about yourself as the representative..." : "Tell us about yourself and your services..."}
+                        placeholder={providerType === "BUSINESS" ? "I am the lead coordinator for Acme Plumbing..." : "I am a certified electrician with 5 years of experience in..."}
                     />
                 </div>
 
                 <div>
-                    <label htmlFor="category" className="block text-sm font-medium text-foreground">
-                        Category
-                    </label>
+                    <InfoLabel
+                        label="Category"
+                        tooltip="Select the primary category that best describes the services you offer."
+                    />
                     <select
                         id="category"
                         name="category"
-                        defaultValue={initialData?.category || ""}
+                        value={isCustomCategory ? "other" : selectedCategory}
+                        onChange={(e) => {
+                            const value = e.target.value;
+                            if (value === "other") {
+                                setIsCustomCategory(true);
+                                setSelectedCategory("other");
+                            } else {
+                                setIsCustomCategory(false);
+                                setSelectedCategory(value);
+                            }
+                        }}
                         className="mt-1 block w-full rounded-md border border-input bg-background px-3 py-2 text-sm ring-offset-background focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2"
                     >
                         <option value="">Select a category</option>
-                        <option value="plumbing">Plumbing</option>
-                        <option value="electrical">Electrical</option>
-                        <option value="cleaning">Cleaning</option>
-                        <option value="landscaping">Landscaping</option>
-                        <option value="moving">Moving</option>
-                        <option value="security">Security</option>
-                        <option value="painting">Painting</option>
-                        <option value="carpentry">Carpentry</option>
-                        <option value="pest_control">Pest Control</option>
-                        <option value="appliance_repair">Appliance Repair</option>
-                        <option value="tutoring">Tutoring</option>
-                        <option value="personal_training">Personal Training</option>
-                        <option value="event_planning">Event Planning</option>
-                        <option value="photography">Photography</option>
-                        <option value="web_development">Web Development</option>
+                        {standardCategories.map(cat => (
+                            <option key={cat} value={cat}>{cat.replace('_', ' ').replace(/\b\w/g, l => l.toUpperCase())}</option>
+                        ))}
+                        <option value="other">Other (Specify)</option>
                     </select>
+
+                    {isCustomCategory && (
+                        <div className="mt-2 animate-in fade-in slide-in-from-top-1">
+                            <label htmlFor="customCategory" className="block text-xs text-muted-foreground mb-1">
+                                Please specify your category:
+                            </label>
+                            <input
+                                type="text"
+                                id="customCategory"
+                                name="customCategory"
+                                required={isCustomCategory}
+                                defaultValue={!standardCategories.includes(initialData?.category || "") ? initialData?.category || "" : ""}
+                                className="block w-full rounded-md border border-input bg-background px-3 py-2 text-sm ring-offset-background placeholder:text-muted-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2"
+                                placeholder="e.g. Interior Design"
+                            />
+                        </div>
+                    )}
                 </div>
 
                 <div>
-                    <label htmlFor="skills" className="block text-sm font-medium text-foreground">
-                        Skills (comma separated)
-                    </label>
+                    <InfoLabel
+                        label="Skills (comma separated)"
+                        tooltip="List specific skills or services you offer, separated by commas (e.g. Leak detection, Geyser installation)."
+                    />
                     <input
                         type="text"
                         id="skills"
                         name="skills"
                         defaultValue={initialData?.skills || ""}
                         className="mt-1 block w-full rounded-md border border-input bg-background px-3 py-2 text-sm ring-offset-background placeholder:text-muted-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2"
-                        placeholder="e.g. Pipe fitting, Leak detection"
+                        placeholder="e.g. Pipe fitting, Leak detection, Geyser maintenance"
                     />
                 </div>
 
                 <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                     <div>
-                        <label htmlFor="contactEmail" className="block text-sm font-medium text-foreground">
-                            Contact Email
-                        </label>
+                        <InfoLabel
+                            label="Contact Email"
+                            tooltip="The email address where customers can reach you."
+                        />
                         <input
                             type="email"
                             id="contactEmail"
                             name="contactEmail"
                             defaultValue={initialData?.contactEmail || ""}
                             className="mt-1 block w-full rounded-md border border-input bg-background px-3 py-2 text-sm ring-offset-background placeholder:text-muted-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2"
+                            placeholder="e.g. contact@mybusiness.com"
                         />
                     </div>
                     <div>
-                        <label htmlFor="contactPhone" className="block text-sm font-medium text-foreground">
-                            Contact Phone
-                        </label>
+                        <InfoLabel
+                            label="Contact Phone"
+                            tooltip="The phone number where customers can call or WhatsApp you."
+                        />
                         <input
                             type="tel"
                             id="contactPhone"
                             name="contactPhone"
                             defaultValue={initialData?.contactPhone || ""}
                             className="mt-1 block w-full rounded-md border border-input bg-background px-3 py-2 text-sm ring-offset-background placeholder:text-muted-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2"
+                            placeholder="e.g. 082 123 4567"
                         />
                     </div>
                 </div>
 
                 <div>
-                    <label htmlFor="location" className="block text-sm font-medium text-foreground">
-                        Location
-                    </label>
+                    <InfoLabel
+                        label="Location"
+                        tooltip="The city or area where you primarily offer your services."
+                    />
                     <input
                         type="text"
                         id="location"
                         name="location"
                         defaultValue={initialData?.location || ""}
                         className="mt-1 block w-full rounded-md border border-input bg-background px-3 py-2 text-sm ring-offset-background placeholder:text-muted-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2"
-                        placeholder="e.g. Johannesburg, Gauteng"
-                    />
-                </div>
-
-                <div>
-                    <label htmlFor="hourlyRate" className="block text-sm font-medium text-foreground">
-                        Hourly Rate (R)
-                    </label>
-                    <input
-                        type="number"
-                        id="hourlyRate"
-                        name="hourlyRate"
-                        min="0"
-                        step="0.01"
-                        defaultValue={initialData?.hourlyRate || ""}
-                        className="mt-1 block w-full rounded-md border border-input bg-background px-3 py-2 text-sm ring-offset-background placeholder:text-muted-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2"
+                        placeholder="e.g. Sandton, Johannesburg"
                     />
                 </div>
 
