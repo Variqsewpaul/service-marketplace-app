@@ -18,6 +18,18 @@ model User {
   createdAt     DateTime  @default(now())
   updatedAt     DateTime  @updatedAt
 
+  // Paystack payment fields
+  paystackCustomerCode   String?  @unique
+  paystackCustomerId     String?  @unique
+
+  // Two-Factor Authentication fields
+  twoFactorEnabled    Boolean  @default(true)
+  twoFactorMethod     String   @default("EMAIL") // EMAIL, SMS, BOTH
+  twoFactorSecret     String?  // For TOTP backup
+  phoneNumber         String?
+  phoneVerified       Boolean  @default(false)
+  backupCodes         String?  // JSON array of backup codes
+
   accounts      Account[]
   sessions      Session[]
   
@@ -28,6 +40,13 @@ model User {
   // Message relations
   sentMessages     Message[] @relation("SentMessages")
   receivedMessages Message[] @relation("ReceivedMessages")
+  
+  // Booking and transaction relations
+  bookings     Booking[] @relation("CustomerBookings")
+  transactions Transaction[] @relation("CustomerTransactions")
+  
+  // Job Posts (Customer side)
+  jobPosts     JobPost[]
 }
 
 model Account {
@@ -77,7 +96,14 @@ model ProviderProfile {
   skills        String?
   contactEmail  String?
   contactPhone  String?
-  location      String?
+  
+  // Structured location fields
+  street      String?
+  district    String?
+  city        String?
+  postcode    String?
+  location    String?  // Deprecated - kept for backward compatibility
+  
   profilePicture String?
   
   // Provider type and business information
@@ -91,7 +117,40 @@ model ProviderProfile {
   businessDescription String?
   businessLogo      String?
   
+  // Subscription and monetization fields
+  subscriptionTier  String  @default("FREE") // FREE, BASIC, PRO
+  monthlyBookingCount Int   @default(0)
+  bookingCountResetDate DateTime @default(now())
+  autoRevealContact Boolean @default(true)
+  
+  leadCredits       Int     @default(0) // Credits to unlock leads
+
+  // Paystack subaccount fields for payouts
+  paystackSubaccountCode String?  @unique
+  paystackSubaccountId   String?  @unique
+  payoutsEnabled         Boolean  @default(false)
+  
   portfolioItems PortfolioItem[]
+  serviceOfferings ServiceOffering[]
+  subscription Subscription?
+  providedBookings Booking[] @relation("ProviderBookings")
+  receivedTransactions Transaction[] @relation("ProviderTransactions")
+  unlockedLeads    Lead[]
+}
+
+model ServiceOffering {
+  id                String   @id @default(cuid())
+  title             String
+  description       String?
+  price             Float?   // Optional for QUOTE_BASED
+  pricingModel      String   @default("FIXED") // FIXED, HOURLY, QUOTE_BASED
+  unit              String?  // e.g., "per hour", "per sq meter", "per item"
+  
+  providerProfileId String
+  providerProfile   ProviderProfile @relation(fields: [providerProfileId], references: [id], onDelete: Cascade)
+  
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
 }
 
 model PortfolioItem {
@@ -111,9 +170,11 @@ model Message {
   content    String
   senderId   String
   receiverId String
-  read       Boolean  @default(false)
   messageType String  @default("TEXT") // TEXT, IMAGE, FILE
   attachments String? // JSON array of file URLs/data
+  read       Boolean  @default(false)
+  deletedBySender   Boolean @default(false)
+  deletedByReceiver Boolean @default(false)
   createdAt  DateTime @default(now())
   
   sender   User @relation("SentMessages", fields: [senderId], references: [id], onDelete: Cascade)
@@ -123,3 +184,210 @@ model Message {
   @@index([receiverId])
 }
 
+// Subscription model for provider subscription tiers
+model Subscription {
+  id                String   @id @default(cuid())
+  providerProfileId String   @unique
+  providerProfile   ProviderProfile @relation(fields: [providerProfileId], references: [id], onDelete: Cascade)
+  
+  tier              String   // FREE, BASIC, PRO
+  status            String   @default("ACTIVE") // ACTIVE, CANCELLED, EXPIRED, PAST_DUE
+  
+  // Billing information
+  currentPeriodStart DateTime @default(now())
+  currentPeriodEnd   DateTime
+  cancelAtPeriodEnd  Boolean  @default(false)
+  
+  // Payment provider integration
+  stripeSubscriptionId String? @unique
+  stripeCustomerId     String?
+  
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+  
+  @@index([providerProfileId])
+}
+
+// Booking model for service bookings
+model Booking {
+  id                String   @id @default(cuid())
+  
+  // Parties involved
+  customerId        String
+  customer          User     @relation("CustomerBookings", fields: [customerId], references: [id], onDelete: Cascade)
+  
+  providerId        String
+  providerProfile   ProviderProfile @relation("ProviderBookings", fields: [providerId], references: [id], onDelete: Cascade)
+  
+  // Service details
+  serviceTitle      String
+  serviceDescription String?
+  serviceOfferingId String?  // Optional link to ServiceOffering
+  
+  // Pricing
+  servicePrice      Float    // Base service price
+  bookingFee        Float    // Platform booking fee
+  transactionFee    Float    // Platform transaction fee (percentage)
+  totalAmount       Float    // Total amount customer pays
+  depositAmount     Float    // Deposit required to confirm
+  
+  // Booking details
+  scheduledDate     DateTime?
+  scheduledTime     String?
+  
+  // Structured location fields
+  street      String?
+  district    String?
+  city        String?
+  postcode    String?
+  location    String?  // Deprecated - kept for backward compatibility
+  
+  notes             String?
+  
+  // Status tracking
+  status            String   @default("PENDING") // PENDING, CONFIRMED, IN_PROGRESS, COMPLETED, CANCELLED, DISPUTED
+  
+  // Contact reveal tracking
+  contactRevealed   Boolean  @default(false)
+  contactRevealedAt DateTime?
+  
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+  completedAt DateTime?
+  cancelledAt DateTime?
+  
+
+  // Relations
+  transactions Transaction[]
+  payments     Payment[]
+  
+  @@index([customerId])
+  @@index([providerId])
+  @@index([status])
+}
+
+// Transaction model for all financial transactions
+model Transaction {
+  id          String   @id @default(cuid())
+  
+  // Transaction details
+  type        String   // DEPOSIT, PAYMENT, REFUND, SUBSCRIPTION, BOOKING_FEE, LEAD_UNLOCK
+  amount      Float    // Total transaction amount
+  fee         Float    @default(0) // Platform fee
+  netAmount   Float    // Amount after fees
+  
+  status      String   @default("PENDING") // PENDING, COMPLETED, FAILED, REFUNDED
+  
+  // Related entities
+  bookingId   String?
+  booking     Booking? @relation(fields: [bookingId], references: [id], onDelete: SetNull)
+  
+  customerId  String?
+  customer    User?    @relation("CustomerTransactions", fields: [customerId], references: [id], onDelete: Cascade)
+  
+  providerId  String?
+  provider    ProviderProfile? @relation("ProviderTransactions", fields: [providerId], references: [id], onDelete: SetNull)
+  
+  // Payment provider integration
+  paystackReference     String? @unique
+  paystackTransactionId String?
+  
+  // Metadata
+  description String?
+  metadata    String? // JSON for additional data
+  
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+  
+  @@index([bookingId])
+  @@index([customerId])
+  @@index([providerId])
+  @@index([type])
+  @@index([status])
+}
+
+// Payment model for escrow management
+model Payment {
+  id          String   @id @default(cuid())
+  
+  bookingId   String
+  booking     Booking  @relation(fields: [bookingId], references: [id], onDelete: Cascade)
+  
+  amount      Float    // Amount held in escrow
+  status      String   @default("HELD") // HELD, RELEASED, REFUNDED, DISPUTED
+  
+  // Release conditions
+  releaseCondition String @default("COMPLETION") // COMPLETION, MANUAL, DISPUTE_RESOLVED
+  releasedAt       DateTime?
+  refundedAt       DateTime?
+  
+  // Payment provider
+  stripePaymentIntentId String?
+  
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+  
+  @@index([bookingId])
+  @@index([status])
+}
+
+// NEW MODELS FOR LEAD GENERATION
+
+model JobPost {
+  id          String   @id @default(cuid())
+  title       String
+  description String
+  
+  // Structured location fields
+  street      String?
+  district    String?
+  city        String?
+  postcode    String?
+  location    String?  // Deprecated - kept for backward compatibility
+  
+  category    String
+  budget      Float?   // Optional budget
+  
+  status      String   @default("OPEN") // OPEN, IN_PROGRESS, COMPLETED, CANCELLED
+  
+  customerId  String
+  customer    User     @relation(fields: [customerId], references: [id], onDelete: Cascade)
+  
+  leads       Lead[]
+  
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+  
+  @@index([customerId])
+  @@index([category])
+  @@index([status])
+}
+
+model Lead {
+  id                String   @id @default(cuid())
+  
+  jobPostId         String
+  jobPost           JobPost  @relation(fields: [jobPostId], references: [id], onDelete: Cascade)
+  
+  providerProfileId String
+  providerProfile   ProviderProfile @relation(fields: [providerProfileId], references: [id], onDelete: Cascade)
+  
+  status            String   @default("UNLOCKED") // UNLOCKED, CONTACTED, BOOKED
+  unlockedAt        DateTime @default(now())
+  
+  @@unique([jobPostId, providerProfileId]) // Prevent unlocking same lead twice
+  @@index([providerProfileId])
+}
+
+// Two-Factor Authentication tokens
+model TwoFactorToken {
+  id        String   @id @default(cuid())
+  userId    String
+  token     String   @unique
+  type      String   // EMAIL_2FA, SMS_2FA
+  expiresAt DateTime
+  createdAt DateTime @default(now())
+  
+  @@index([userId])
+  @@index([token])
+}

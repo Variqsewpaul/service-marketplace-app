@@ -10,7 +10,16 @@ import { AuthError } from "next-auth"
 export async function authenticate(prevState: any, formData: FormData) {
     try {
         console.log("Attempting sign in...")
-        formData.set("redirectTo", "/")
+
+        const email = formData.get("email") as string
+        const user = await db.user.findUnique({ where: { email } })
+
+        let redirectTo = "/dashboard" // Default for customer
+        if (user?.role === "PROVIDER") {
+            redirectTo = "/leads"
+        }
+
+        formData.set("redirectTo", redirectTo)
         await signIn("credentials", formData)
         console.log("Sign in successful (should have redirected)")
     } catch (error) {

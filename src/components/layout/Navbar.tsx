@@ -13,12 +13,12 @@ export async function Navbar() {
                         <span className="text-xl font-bold text-primary">ServiceMarket</span>
                     </Link>
                     <div className="hidden md:flex items-center gap-6 text-sm font-medium text-muted-foreground">
-                        <Link href="/services" className="hover:text-foreground transition-colors">
-                            Find Services
-                        </Link>
-                        <Link href="/become-a-provider" className="hover:text-foreground transition-colors">
-                            Become a Provider
-                        </Link>
+
+                        {session?.user?.role !== "PROVIDER" && (
+                            <Link href="/become-a-provider" className="hover:text-foreground transition-colors">
+                                Become a Provider
+                            </Link>
+                        )}
                     </div>
                 </div>
                 <div className="flex items-center gap-4">

@@ -1,8 +1,9 @@
 "use client"
 
 import { useActionState, useState, useCallback, useRef, useEffect } from "react"
-import { sendMessage } from "@/actions/messages"
+import { sendMessage, deleteConversation } from "@/actions/messages"
 import { Button } from "@/components/ui/Button"
+import { useRouter } from "next/navigation"
 
 function formatTimestamp(date: Date) {
     const now = new Date()
@@ -37,6 +38,14 @@ export function MessageThread({
     const [messageType, setMessageType] = useState("TEXT")
     const messagesEndRef = useRef<HTMLDivElement>(null)
     const fileInputRef = useRef<HTMLInputElement>(null)
+    const router = useRouter()
+
+    const handleDelete = async () => {
+        if (confirm("Are you sure you want to delete this conversation?")) {
+            await deleteConversation(partnerId)
+            router.push("/dashboard/messages")
+        }
+    }
 
     // Auto-scroll to bottom
     useEffect(() => {
@@ -104,7 +113,7 @@ export function MessageThread({
     return (
         <div className="flex flex-col h-[600px]">
             {/* Header */}
-            <div className="border-b p-4 bg-muted/30">
+            <div className="border-b p-4 bg-muted/30 flex justify-between items-center">
                 <div className="flex items-center gap-3">
                     <div className="w-10 h-10 rounded-full bg-primary/20 flex items-center justify-center text-lg font-bold text-primary">
                         {partnerName.charAt(0).toUpperCase()}
@@ -114,6 +123,21 @@ export function MessageThread({
                         <p className="text-xs text-muted-foreground">Active now</p>
                     </div>
                 </div>
+                <Button
+                    variant="ghost"
+                    size="sm"
+                    className="text-red-500 hover:text-red-600 hover:bg-red-50"
+                    onClick={handleDelete}
+                >
+                    Delete Chat
+                </Button>
+            </div>
+
+            {/* Privacy Warning */}
+            <div className="bg-yellow-50 border-b border-yellow-100 p-2 text-center">
+                <p className="text-xs text-yellow-800">
+                    🔒 For your safety, contact details are hidden until a booking is confirmed.
+                </p>
             </div>
 
             {/* Messages */}
@@ -134,8 +158,8 @@ export function MessageThread({
                                     <div
                                         key={message.id}
                                         className={`rounded-2xl px-4 py-2 ${group.isSender
-                                                ? "bg-primary text-primary-foreground rounded-tr-sm"
-                                                : "bg-muted rounded-tl-sm"
+                                            ? "bg-primary text-primary-foreground rounded-tr-sm"
+                                            : "bg-muted rounded-tl-sm"
                                             }`}
                                     >
                                         {/* Image attachment */}
